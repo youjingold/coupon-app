@@ -301,41 +301,66 @@ function statusOf(c){
 }
 function statusLabel(s){return s==='done'?'교환완료':s==='fail'?'불능':'미교환';}
 
-// ── API 호출 (GET 방식 — CORS 우회) ─────────────
-function apiGet(params){
-  var qs=Object.keys(params).map(function(k){
-    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
-  }).join('&');
-  return fetch(API_URL+'?'+qs,{
-    method:'GET',
-    redirect:'follow',
-    credentials:'omit',
-    cache:'no-cache'
-  }).then(function(r){
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
+// ── JSONP 호출 함수 (CORS 완전 우회) ────────────
+var jsonpCount = 0;
+function apiCall(params, onSuccess, onError) {
+  var cbName = '_cb' + (++jsonpCount) + '_' + Date.now();
+  var qs = 'callback=' + cbName;
+  Object.keys(params).forEach(function(k) {
+    qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
   });
+
+  var timer = setTimeout(function() {
+    delete window[cbName];
+    if (onError) onError(new Error('요청 시간 초과'));
+  }, 15000);
+
+  window[cbName] = function(data) {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (data && data.success) {
+      if (onSuccess) onSuccess(data);
+    } else {
+      if (onError) onError(new Error(data ? data.message : '오류'));
+    }
+  };
+
+  var s = document.createElement('script');
+  s.src = API_URL + '?' + qs;
+  s.onerror = function() {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (onError) onError(new Error('네트워크 오류'));
+  };
+  document.head.appendChild(s);
+  setTimeout(function() {
+    if (s.parentNode) s.parentNode.removeChild(s);
+  }, 16000);
 }
 
 // ── 데이터 로드 ──────────────────────────────────
-function loadData(){
-  if(!API_URL){
-    document.getElementById('listBody').innerHTML=
+function loadData() {
+  if (!API_URL) {
+    document.getElementById('listBody').innerHTML =
       '<div class="state-box"><p>⚙️ 설정 탭에서<br>URL을 입력해주세요</p></div>';
     return;
   }
-  document.getElementById('listBody').innerHTML=
+  document.getElementById('listBody').innerHTML =
     '<div class="state-box"><div class="spinner"></div><p>불러오는 중...</p></div>';
-  apiGet({action:'list',sheet:SHEET})
-    .then(function(j){
-      if(!j.success) throw new Error(j.message||'오류');
-      coupons=j.data.map(function(d,i){return Object.assign({id:i+1},d);});
+
+  apiCall(
+    { action: 'list', sheet: SHEET },
+    function(j) {
+      coupons = j.data.map(function(d, i) {
+        return Object.assign({ id: i + 1 }, d);
+      });
       renderList();
-    })
-    .catch(function(e){
-      document.getElementById('listBody').innerHTML=
-        '<div class="state-box"><p>⚠️ 로드 실패<br><small>'+e.message+'</small><br><br>설정의 URL을 확인해주세요</p></div>';
-    });
+    },
+    function(e) {
+      document.getElementById('listBody').innerHTML =
+        '<div class="state-box"><p>⚠️ 로드 실패<br><small>' + e.message + '</small><br><br>URL을 확인해주세요</p></div>';
+    }
+  );
 }
 
 // ── 탭 전환 ──────────────────────────────────────
@@ -452,9 +477,12 @@ function confirmEditRetry(id){
   if(인증1) c.인증번호1=인증1;
   c.인증번호2=인증2; c.교환여부=''; c.불능처리일=''; c.확인='재시도';
   openEditId=null; showToast('🔄 미교환으로 전환'); renderList();
-  apiGet({action:'retry',sheet:SHEET,rowIndex:c.rowIndex,
-    금액:c.금액,쿠폰번호:c.쿠폰번호,인증번호1:c.인증번호1,인증번호2:c.인증번호2})
-    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+  apiCall(
+    {action:'retry', sheet:SHEET, rowIndex:c.rowIndex,
+     금액:c.금액, 쿠폰번호:c.쿠폰번호, 인증번호1:c.인증번호1, 인증번호2:c.인증번호2},
+    function(){},
+    function(){showToast('⚠️ 시트 저장 실패');}
+  );
 }
 
 // ── 상세 화면 ────────────────────────────────────
@@ -559,9 +587,11 @@ function confirmFail(){
   c.교환여부='불능'; c.불능처리일=new Date().toISOString().slice(0,10); c.확인=사유;
   closePop('failPop'); showToast('❌ 처리 중...');
   renderDetail(); renderList();
-  apiGet({action:'fail',sheet:SHEET,rowIndex:c.rowIndex,사유:사유})
-    .then(function(){showToast('❌ 불능 처리 완료');})
-    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+  apiCall(
+    {action:'fail', sheet:SHEET, rowIndex:c.rowIndex, 사유:사유},
+    function(){showToast('❌ 불능 처리 완료');},
+    function(){showToast('⚠️ 시트 저장 실패');}
+  );
 }
 
 // ── 교환 완료 (즉시 처리) ────────────────────────
@@ -575,9 +605,11 @@ function doExchangeNow(){
   }
   bcIdx=next!==-1?next:Math.min(bcIdx,filtered.length-1);
   if(filtered.length>0) setTimeout(renderDetail,200); else goBack();
-  apiGet({action:'exchange',sheet:SHEET,rowIndex:c.rowIndex,교환처:'',송금액:0,확인:''})
-    .then(function(){showToast('✅ 교환 완료!');})
-    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+  apiCall(
+    {action:'exchange', sheet:SHEET, rowIndex:c.rowIndex, 교환처:'', 송금액:0, 확인:''},
+    function(){showToast('✅ 교환 완료!');},
+    function(){showToast('⚠️ 시트 저장 실패');}
+  );
 }
 
 function closePop(id){document.getElementById(id).classList.remove('on');}
