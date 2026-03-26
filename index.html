@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="쿠폰교환">
+<meta name="theme-color" content="#2e7d9a">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>쿠폰 교환</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/3.3.0/bwip-js-min.js"></script>
+<style>
+:root{
+  --hdr:#2e7d9a;--bg:#f0f0f0;--white:#fff;
+  --border:#d0d0d0;--text:#111;--muted:#777;
+  --red:#e53935;--green:#2e7d32;--orange:#f57f17;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:4.2vw;height:100%;height:-webkit-fill-available}
+html,body{
+  height:100%;overflow:hidden;
+  font-family:-apple-system,'Noto Sans KR',sans-serif;
+  background:var(--bg);color:var(--text);
+  position:fixed;width:100%;
+}
+
+/* ══ 헤더 ══ */
+.hdr{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:calc(14vw + var(--safe-t));
+  padding-top:var(--safe-t);
+  background:var(--hdr);
+  display:flex;align-items:center;padding-left:2vw;padding-right:2vw;
+  box-shadow:0 0.5vw 2vw rgba(0,0,0,.3);
+}
+.hdr-back{background:none;border:none;color:#fff;font-size:8vw;padding:1vw 2vw;cursor:pointer;line-height:1;display:none}
+.hdr-title{flex:1;color:#fff;font-size:6vw;font-weight:800;padding-left:1vw}
+.hdr-icon{background:none;border:none;color:#fff;font-size:7vw;padding:1vw 2vw;cursor:pointer}
+
+/* ══ 탭바 ══ */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  height:calc(17vw + var(--safe-b));
+  background:var(--hdr);display:flex;
+  border-top:0.3vw solid rgba(255,255,255,.2);
+  padding-bottom:var(--safe-b);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.8vw;border:none;background:none;color:rgba(255,255,255,.65);
+  font-size:3.2vw;font-weight:700;cursor:pointer;
+  border-top:0.8vw solid transparent;
+}
+.tab .ti{font-size:5.5vw}
+.tab.active{color:#fff;border-top-color:#fff}
+
+/* ══ 스크린 ══ */
+.screen{
+  position:fixed;
+  top:calc(14vw + var(--safe-t));
+  left:0;right:0;
+  bottom:calc(17vw + var(--safe-b));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:var(--bg);
+  transition:transform .22s ease,opacity .22s ease;
+}
+.screen.hidden{transform:translateX(100%);opacity:0;pointer-events:none}
+
+/* ══ 컬럼 헤더 ══ */
+.col-head{display:flex;background:#dde;border-bottom:0.5vw solid #bbc;position:sticky;top:0;z-index:10}
+.col-head span{padding:3vw 3.5vw;font-size:4.5vw;font-weight:800;color:#445}
+.c-amt{width:20%}.c-no{width:48%}.c-dt{flex:1}
+
+/* ══ 고객 그룹 행 ══ */
+.grp-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3.5vw 4vw;background:#c8e6f5;
+  border-bottom:0.3vw solid #90cae0;border-top:0.8vw solid var(--hdr);
+}
+.grp-name{font-size:5.5vw;font-weight:900;color:#1a5f7a}
+.grp-badge{background:var(--hdr);color:#fff;border-radius:8vw;padding:1vw 4vw;font-size:4.8vw;font-weight:800;min-width:11vw;text-align:center}
+
+/* ══ 데이터 행 ══ */
+.data-row{
+  display:flex;align-items:center;min-height:15vw;
+  background:var(--white);border-bottom:0.3vw solid var(--border);
+  cursor:pointer;transition:background .1s;
+}
+.data-row:active{background:#e8f4f8}
+.data-row.done{background:#f0faf0}
+.data-row.fail{background:#fff2f2}
+.cell{padding:2.5vw 3.5vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-amt-v{width:20%;font-size:5.5vw;font-weight:900;color:var(--red)}
+.c-amt-v.done-c{color:var(--green)}
+.c-no-v{width:48%;font-size:4.5vw;color:#222}
+.c-dt-v{flex:1;font-size:3.8vw;color:var(--muted)}
+.fail-hint{font-size:3.2vw;color:var(--red);font-weight:700;display:block;margin-top:0.5vw}
+
+/* ══ 수정 패널 ══ */
+.edit-panel{background:#fffbf2;border-left:1.2vw solid var(--orange);padding:4vw 3.5vw;border-bottom:0.5vw solid #ffcc80;display:none}
+.edit-reason{background:#fbe9e7;border-radius:2.5vw;padding:3vw;font-size:4.2vw;color:#bf360c;font-weight:700;margin-bottom:3.5vw}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5vw;margin-bottom:3.5vw}
+.edit-field label{display:block;font-size:3.5vw;font-weight:700;color:var(--muted);margin-bottom:1.2vw}
+.edit-field input{width:100%;padding:3vw;border:0.4vw solid #ffe0b2;border-radius:2.5vw;font-size:4.2vw;outline:none}
+.edit-field input:focus{border-color:var(--orange)}
+.edit-btns{display:flex;gap:2.5vw}
+.edit-cancel{flex:1;padding:3.5vw;background:#f0f0f0;border:none;border-radius:3vw;font-size:4.2vw;font-weight:800;color:#555;cursor:pointer}
+.edit-confirm{flex:3;padding:3.5vw;background:linear-gradient(135deg,#f57f17,#ff8f00);border:none;border-radius:3vw;font-size:4.2vw;font-weight:800;color:#fff;cursor:pointer}
+
+/* ══ 로딩/빈 ══ */
+.state-box{display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;gap:4vw;color:var(--muted)}
+.spinner{width:11vw;height:11vw;border:1vw solid #ddd;border-top-color:var(--hdr);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state-box p{font-size:5vw;text-align:center;line-height:1.6}
+
+/* ══ 상세 화면 ══ */
+#detailScreen{background:var(--white)}
+.det-wrap{padding:6vw 5vw 30vw}
+.det-customer{font-size:8vw;font-weight:900;margin-bottom:3vw}
+.det-row{display:flex;align-items:baseline;margin-bottom:1.2vw}
+.det-label{width:22vw;font-size:3.8vw;color:var(--muted);font-weight:600;flex-shrink:0}
+.det-val{font-size:4.2vw;font-weight:800}
+.det-val.s-미교환{color:#e65100}
+.det-val.s-교환완료{color:var(--green)}
+.det-val.s-불능{color:var(--red)}
+.det-hr{height:0.3vw;background:var(--border);margin:3vw 0}
+.det-amount{font-size:9vw;font-weight:900;color:var(--red);margin-bottom:2.5vw}
+.det-amount.done-c{color:var(--green)}
+.det-coupon{font-size:6vw;font-weight:800;letter-spacing:0.8vw;font-family:monospace;margin-bottom:2vw;word-break:break-all}
+.det-auth1{font-size:7vw;font-weight:900;letter-spacing:1vw;font-family:monospace;color:#111;margin-bottom:1.5vw}
+.det-auth{font-size:5.2vw;font-weight:700;letter-spacing:0.5vw;font-family:monospace;color:#444;margin-bottom:1vw}
+.barcode-box{margin-top:5vw;text-align:center;padding:3vw 0}
+.barcode-box img{width:85vw;height:auto;display:block;margin:0 auto}
+.barcode-box canvas{width:85vw !important;height:auto !important;display:block;margin:0 auto}
+.det-nav{display:flex;justify-content:center;align-items:center;margin-top:5vw}
+.nav-pager{font-size:4.5vw;color:var(--muted);font-weight:600;text-align:center}
+
+/* ══ 하단 고정 버튼 ══ */
+.fixed-btns{
+  position:fixed;
+  bottom:calc(17vw + var(--safe-b));
+  left:0;right:0;z-index:150;
+  display:none;gap:3vw;padding:3vw 4vw;
+  background:var(--white);
+  border-top:0.5vw solid var(--border);
+  box-shadow:0 -1vw 4vw rgba(0,0,0,.12);
+}
+.fixed-btns.on{display:flex}
+.btn-fail-f{flex:1;padding:5vw;background:linear-gradient(135deg,#e53935,#b71c1c);border:none;border-radius:4vw;font-size:5vw;font-weight:900;color:#fff;cursor:pointer}
+.btn-ok-f{flex:1;padding:5vw;background:linear-gradient(135deg,#2e7d32,#43a047);border:none;border-radius:4vw;font-size:5vw;font-weight:900;color:#fff;cursor:pointer}
+.btn-fail-f:disabled,.btn-ok-f:disabled{background:#ccc;color:#999;cursor:default}
+
+/* ══ 팝업 ══ */
+.pop-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:center;justify-content:center;padding:5vw}
+.pop-ov.on{display:flex}
+.pop-box{background:var(--white);border-radius:5vw;width:100%;max-width:95vw;padding:6vw 5vw 5vw;box-shadow:0 5vw 15vw rgba(0,0,0,.3);animation:pop .2s ease}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.pop-h{font-size:5.5vw;font-weight:900;text-align:center;margin-bottom:5vw}
+.pop-btns{display:flex;gap:2.5vw;margin-top:1.5vw}
+.pop-cancel{flex:1;padding:4.5vw;background:#f0f0f0;border:none;border-radius:3.5vw;font-size:4.5vw;font-weight:800;color:#555;cursor:pointer}
+.pop-red{flex:2;padding:4.5vw;background:linear-gradient(135deg,#e53935,#b71c1c);border:none;border-radius:3.5vw;font-size:4.5vw;font-weight:800;color:#fff;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:2.5vw;margin-bottom:4vw}
+.chip{padding:3.5vw 4.5vw;border:0.5vw solid var(--border);border-radius:12vw;font-size:4.2vw;font-weight:700;color:#555;background:#fff;cursor:pointer}
+.chip.sel{border-color:var(--red);background:var(--red);color:#fff}
+.chip-ta{width:100%;padding:3.5vw;border:0.4vw solid var(--border);border-radius:3vw;font-size:4.2vw;outline:none;resize:none;margin-bottom:2.5vw;display:none}
+
+/* ══ 설정 화면 ══ */
+.settings-wrap{padding:6vw 5vw}
+.settings-wrap h2{font-size:6vw;font-weight:900;margin-bottom:6vw;color:var(--hdr)}
+.s-label{font-size:4.5vw;font-weight:700;color:#555;margin-bottom:2vw;display:block}
+.s-input{width:100%;padding:4vw;border:0.5vw solid var(--border);border-radius:3vw;font-size:4.2vw;outline:none;margin-bottom:5vw;background:var(--white)}
+.s-input:focus{border-color:var(--hdr)}
+.s-btn{width:100%;padding:5vw;background:var(--hdr);border:none;border-radius:4vw;font-size:5vw;font-weight:900;color:#fff;cursor:pointer}
+.s-note{margin-top:4vw;font-size:3.8vw;color:var(--muted);line-height:1.8}
+
+/* ══ 토스트 ══ */
+.toast{position:fixed;bottom:calc(17vw + 4vw + var(--safe-b));left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:3.5vw 7vw;border-radius:12vw;font-size:4.5vw;font-weight:700;z-index:500;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="hdr" id="hdr">
+  <button class="hdr-back" id="hdrBack" onclick="goBack()">←</button>
+  <span class="hdr-title" id="hdrTitle">미교환</span>
+  <button class="hdr-icon" onclick="loadData()">↺</button>
+</div>
+
+<!-- 리스트 화면 -->
+<div class="screen" id="listScreen">
+  <div class="col-head">
+    <span class="c-amt">금액</span>
+    <span class="c-no">쿠폰번호</span>
+    <span class="c-dt">접수일</span>
+  </div>
+  <div id="listBody">
+    <div class="state-box"><div class="spinner"></div><p>불러오는 중...</p></div>
+  </div>
+</div>
+
+<!-- 상세 화면 -->
+<div class="screen hidden" id="detailScreen">
+  <div class="det-wrap" id="detWrap"></div>
+</div>
+
+<!-- 설정 화면 -->
+<div class="screen hidden" id="settingScreen">
+  <div class="settings-wrap">
+    <h2>⚙️ 설정</h2>
+    <label class="s-label">Apps Script 배포 URL</label>
+    <input class="s-input" id="s-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <label class="s-label">시트 이름</label>
+    <input class="s-input" id="s-sheet" type="text" placeholder="신세계쿠폰">
+    <button class="s-btn" onclick="saveSettings()">💾 저장 후 데이터 불러오기</button>
+    <p class="s-note">
+      ※ Apps Script → 배포 → 웹앱 배포 후 URL을 입력하세요.<br>
+      ※ 액세스 권한: <b>모든 사용자</b> 로 설정해야 합니다.<br>
+      ※ 설정은 한 번만 하면 저장됩니다.
+    </p>
+  </div>
+</div>
+
+<!-- 탭바 -->
+<div class="tabbar">
+  <button class="tab active" id="tab-pending" onclick="switchTab('pending')"><span class="ti">☰</span>미교환</button>
+  <button class="tab"        id="tab-fail"    onclick="switchTab('fail')">   <span class="ti">☰</span>불능처리</button>
+  <button class="tab"        id="tab-all"     onclick="switchTab('all')">    <span class="ti">☰</span>고객</button>
+  <button class="tab"        id="tab-done"    onclick="switchTab('done')">   <span class="ti">☰</span>교환완료</button>
+  <button class="tab"        id="tab-setting" onclick="switchTab('setting')"><span class="ti">⚙️</span>설정</button>
+</div>
+
+<!-- 하단 고정 버튼 -->
+<div class="fixed-btns" id="fixedBtns">
+  <button class="btn-fail-f" id="btnFail" onclick="openFailPop()">❌ 불능</button>
+  <button class="btn-ok-f"   id="btnOk"   onclick="doExchangeNow()">✅ 교환완료</button>
+</div>
+
+<!-- 불능 사유 팝업 -->
+<div class="pop-ov" id="failPop">
+  <div class="pop-box">
+    <div class="pop-h">❌ 불능 사유</div>
+    <div class="chips" id="reasonChips">
+      <button class="chip" onclick="selChip(this,'이미 사용된 쿠폰')">이미 사용된 쿠폰</button>
+      <button class="chip" onclick="selChip(this,'유효기간 만료')">유효기간 만료</button>
+      <button class="chip" onclick="selChip(this,'인증번호 불일치')">인증번호 불일치</button>
+      <button class="chip" onclick="selChip(this,'쿠폰 정보 없음')">쿠폰 정보 없음</button>
+      <button class="chip" onclick="selChip(this,'고객 정보 불일치')">고객 정보 불일치</button>
+      <button class="chip" onclick="selChip(this,'기타')">기타</button>
+    </div>
+    <textarea class="chip-ta" id="failCustom" rows="2" placeholder="직접 입력..."></textarea>
+    <div class="pop-btns">
+      <button class="pop-cancel" onclick="closePop('failPop')">취소</button>
+      <button class="pop-red"    onclick="confirmFail()">불능 처리</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 설정값 ───────────────────────────────────────
+var API_URL = '';
+var SHEET   = '신세계쿠폰';
+try {
+  API_URL = localStorage.getItem('apiUrl')   || '';
+  SHEET   = localStorage.getItem('apiSheet') || '신세계쿠폰';
+} catch(e) {}
+
+var coupons=[], filtered=[], curTab='pending';
+var bcIdx=0, selReason='', openEditId=null, onDetail=false;
+
+// ── PWA Service Worker 등록 ──────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(function(){});
+}
+
+// ── 설정 저장 ────────────────────────────────────
+function saveSettings(){
+  API_URL = document.getElementById('s-url').value.trim();
+  SHEET   = document.getElementById('s-sheet').value.trim() || '신세계쿠폰';
+  try {
+    localStorage.setItem('apiUrl',   API_URL);
+    localStorage.setItem('apiSheet', SHEET);
+  } catch(e) {}
+  showToast('✅ 저장 완료');
+  switchTab('pending');
+  loadData();
+}
+
+// ── 상태 판별 ────────────────────────────────────
+function statusOf(c){
+  var v=String(c.교환여부||'').trim();
+  return (v==='교환완료'||v==='교환')?'done':v==='불능'?'fail':'pending';
+}
+function statusLabel(s){return s==='done'?'교환완료':s==='fail'?'불능':'미교환';}
+
+// ── API 호출 (GET 방식 — CORS 우회) ─────────────
+function apiGet(params){
+  var qs=Object.keys(params).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
+  }).join('&');
+  return fetch(API_URL+'?'+qs,{
+    method:'GET',
+    redirect:'follow',
+    credentials:'omit',
+    cache:'no-cache'
+  }).then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  });
+}
+
+// ── 데이터 로드 ──────────────────────────────────
+function loadData(){
+  if(!API_URL){
+    document.getElementById('listBody').innerHTML=
+      '<div class="state-box"><p>⚙️ 설정 탭에서<br>URL을 입력해주세요</p></div>';
+    return;
+  }
+  document.getElementById('listBody').innerHTML=
+    '<div class="state-box"><div class="spinner"></div><p>불러오는 중...</p></div>';
+  apiGet({action:'list',sheet:SHEET})
+    .then(function(j){
+      if(!j.success) throw new Error(j.message||'오류');
+      coupons=j.data.map(function(d,i){return Object.assign({id:i+1},d);});
+      renderList();
+    })
+    .catch(function(e){
+      document.getElementById('listBody').innerHTML=
+        '<div class="state-box"><p>⚠️ 로드 실패<br><small>'+e.message+'</small><br><br>설정의 URL을 확인해주세요</p></div>';
+    });
+}
+
+// ── 탭 전환 ──────────────────────────────────────
+function switchTab(tab){
+  curTab=tab;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  var el=document.getElementById('tab-'+tab); if(el) el.classList.add('active');
+  ['listScreen','detailScreen','settingScreen'].forEach(function(id){
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.getElementById('fixedBtns').classList.remove('on');
+  document.getElementById('hdrBack').style.display='none';
+  onDetail=false;
+  var titles={pending:'미교환',fail:'불능처리',all:'고객',done:'교환완료',setting:'설정'};
+  document.getElementById('hdrTitle').textContent=titles[tab]||tab;
+  if(tab==='setting'){
+    document.getElementById('settingScreen').classList.remove('hidden');
+    document.getElementById('s-url').value=API_URL;
+    document.getElementById('s-sheet').value=SHEET;
+  } else {
+    document.getElementById('listScreen').classList.remove('hidden');
+    renderList();
+  }
+}
+
+// ── 리스트 렌더 ──────────────────────────────────
+function renderList(){
+  filtered=coupons.filter(function(c){
+    var s=statusOf(c);
+    if(curTab==='pending'){
+      return String(c.교환일||'').trim()===''&&String(c.불능처리일||'').trim()==='';
+    }
+    if(curTab==='done'&&s!=='done') return false;
+    if(curTab==='fail'&&s!=='fail') return false;
+    return true;
+  });
+
+  if(!filtered.length){
+    document.getElementById('listBody').innerHTML=
+      '<div class="state-box"><p>해당 쿠폰이 없습니다.</p></div>';
+    return;
+  }
+
+  var gm={};
+  filtered.forEach(function(c){
+    var cu=c.고객||'(없음)';
+    if(!gm[cu]) gm[cu]=[];
+    gm[cu].push(c);
+  });
+  var custs=Object.keys(gm).sort(function(a,b){return a.localeCompare(b,'ko');});
+
+  var html='';
+  custs.forEach(function(cust){
+    var rows=gm[cust];
+    var total=rows.reduce(function(s,c){return s+Number(c.금액||0);},0);
+    html+='<div class="grp-row"><span class="grp-name">'+cust+'</span>'
+        +'<span class="grp-badge">'+total.toLocaleString()+'</span></div>';
+
+    rows.forEach(function(c){
+      var s=statusOf(c);
+      var idx=filtered.indexOf(c);
+      var failHint=s==='fail'&&c.확인?'<span class="fail-hint">'+c.확인+'</span>':'';
+      var rowClick=s==='fail'?'toggleEdit(event,'+c.id+')':'openDetail('+idx+')';
+
+      html+='<div class="data-row '+s+'" onclick="'+rowClick+'">'
+          +'<span class="cell c-amt-v'+(s==='done'?' done-c':'')+'">'+Number(c.금액).toLocaleString()+'</span>'
+          +'<span class="cell c-no-v">'+c.쿠폰번호+failHint+'</span>'
+          +'<span class="cell c-dt-v">'+(c.접수일||'').replace(/-/g,'.')+'</span>'
+          +'</div>';
+
+      if(s==='fail'){
+        html+='<div class="edit-panel" id="edit-'+c.id+'">'
+            +'<div class="edit-reason">💬 '+(c.확인||'(없음)')+'</div>'
+            +'<div class="edit-grid">'
+            +'<div class="edit-field"><label>금액</label><input type="number" id="ef-금액-'+c.id+'" value="'+c.금액+'"></div>'
+            +'<div class="edit-field"><label>쿠폰번호</label><input type="text" id="ef-쿠폰번호-'+c.id+'" value="'+c.쿠폰번호+'"></div>'
+            +'<div class="edit-field"><label>인증번호 1</label><input type="text" id="ef-인증1-'+c.id+'" value="'+(c.인증번호1||'')+'"></div>'
+            +'<div class="edit-field"><label>인증번호 2</label><input type="text" id="ef-인증2-'+c.id+'" value="'+(c.인증번호2||'')+'"></div>'
+            +'</div>'
+            +'<div class="edit-btns">'
+            +'<button class="edit-cancel" onclick="toggleEdit(event,'+c.id+')">취소</button>'
+            +'<button class="edit-confirm" onclick="confirmEditRetry('+c.id+')">✅ 수정 → 미교환 전환</button>'
+            +'</div></div>';
+      }
+    });
+  });
+
+  document.getElementById('listBody').innerHTML=html;
+  document.querySelectorAll('.edit-panel').forEach(function(p){p.style.display='none';});
+}
+
+// ── 인라인 수정 ──────────────────────────────────
+function toggleEdit(e,id){
+  e.stopPropagation();
+  if(openEditId&&openEditId!==id){
+    var p=document.getElementById('edit-'+openEditId); if(p)p.style.display='none';
+  }
+  var el=document.getElementById('edit-'+id); if(!el)return;
+  var op=el.style.display==='none'||el.style.display==='';
+  el.style.display=op?'block':'none';
+  openEditId=op?id:null;
+}
+
+function confirmEditRetry(id){
+  var c=null;
+  for(var i=0;i<coupons.length;i++){if(coupons[i].id===id){c=coupons[i];break;}}
+  if(!c)return;
+  var 금액=document.getElementById('ef-금액-'+id).value;
+  var 쿠폰번호=document.getElementById('ef-쿠폰번호-'+id).value.trim();
+  var 인증1=document.getElementById('ef-인증1-'+id).value.trim();
+  var 인증2=document.getElementById('ef-인증2-'+id).value.trim();
+  if(금액) c.금액=Number(금액);
+  if(쿠폰번호) c.쿠폰번호=쿠폰번호;
+  if(인증1) c.인증번호1=인증1;
+  c.인증번호2=인증2; c.교환여부=''; c.불능처리일=''; c.확인='재시도';
+  openEditId=null; showToast('🔄 미교환으로 전환'); renderList();
+  apiGet({action:'retry',sheet:SHEET,rowIndex:c.rowIndex,
+    금액:c.금액,쿠폰번호:c.쿠폰번호,인증번호1:c.인증번호1,인증번호2:c.인증번호2})
+    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+}
+
+// ── 상세 화면 ────────────────────────────────────
+function openDetail(idx){
+  bcIdx=idx; renderDetail();
+  document.getElementById('listScreen').classList.add('hidden');
+  document.getElementById('detailScreen').classList.remove('hidden');
+  document.getElementById('fixedBtns').classList.add('on');
+  document.getElementById('hdrBack').style.display='block';
+  document.getElementById('hdrTitle').textContent='상세';
+  onDetail=true;
+}
+
+function goBack(){
+  document.getElementById('detailScreen').classList.add('hidden');
+  document.getElementById('listScreen').classList.remove('hidden');
+  document.getElementById('fixedBtns').classList.remove('on');
+  document.getElementById('hdrBack').style.display='none';
+  var titles={pending:'미교환',fail:'불능처리',all:'고객',done:'교환완료'};
+  document.getElementById('hdrTitle').textContent=titles[curTab]||curTab;
+  onDetail=false;
+}
+
+function fmtNo(no){return String(no).replace(/\s/g,'').replace(/(.{4})/g,'$1 ').trim();}
+
+function renderDetail(){
+  var c=filtered[bcIdx]; if(!c)return;
+  var s=statusOf(c); var sl=statusLabel(s);
+  document.getElementById('btnOk').disabled  =s!=='pending';
+  document.getElementById('btnFail').disabled=s!=='pending';
+
+  var bcHtml='';
+  var bcUrl=(c.바코드&&c.바코드.indexOf('http')===0)?c.바코드:'';
+  if(bcUrl){
+    bcHtml='<img src="'+bcUrl+'" onerror="this.outerHTML=\'<p style=color:#aaa;text-align:center>바코드 오류</p>\'">';
+  } else {
+    bcHtml='<canvas id="bcCanvas"></canvas>';
+  }
+
+  var authHtml='';
+  if(c.인증번호1&&c.인증번호1!=='0')
+    authHtml+='<div class="det-auth1">'+fmtNo(c.인증번호1)+'</div>';
+  if(c.인증번호2&&c.인증번호2.trim())
+    authHtml+='<div class="det-auth">'+fmtNo(c.인증번호2)+'</div>';
+
+  document.getElementById('detWrap').innerHTML=''
+    +'<div class="det-customer">'+c.고객+'</div>'
+    +'<div class="det-row"><span class="det-label">접수일</span><span class="det-val">'+(c.접수일||'-')+'</span></div>'
+    +'<div class="det-row"><span class="det-label">교환일</span><span class="det-val">'+(c.교환일||'-')+'</span></div>'
+    +'<div class="det-row"><span class="det-label">현재상태</span><span class="det-val s-'+sl+'">'+sl+'</span></div>'
+    +(s==='fail'&&c.확인?'<div class="det-row"><span class="det-label">불능사유</span><span class="det-val" style="color:var(--red)">'+c.확인+'</span></div>':'')
+    +(s==='done'&&c.교환처?'<div class="det-row"><span class="det-label">교환처</span><span class="det-val" style="color:var(--green)">'+c.교환처+'</span></div>':'')
+    +'<div class="det-hr"></div>'
+    +'<div class="det-amount'+(s==='done'?' done-c':'')+'">'+Number(c.금액).toLocaleString()+' 만</div>'
+    +'<div class="det-coupon">'+fmtNo(c.쿠폰번호)+'</div>'
+    +authHtml
+    +'<div class="barcode-box">'+bcHtml+'</div>'
+    +'<div class="det-nav"><span class="nav-pager">'+(bcIdx+1)+' / '+filtered.length+' &nbsp;← 스와이프 →</span></div>';
+
+  document.getElementById('detailScreen').scrollTop=0;
+
+  if(!bcUrl){
+    setTimeout(function(){
+      try{bwipjs.toCanvas('bcCanvas',{bcid:'code128',text:String(c.쿠폰번호),scale:3,height:20,includetext:false});}
+      catch(e){console.warn(e);}
+    },80);
+  }
+}
+
+function detNav(dir){
+  var n=bcIdx+dir; if(n<0||n>=filtered.length)return;
+  bcIdx=n; renderDetail();
+}
+
+// 스와이프
+var tsX=0;
+document.getElementById('detailScreen').addEventListener('touchstart',function(e){tsX=e.touches[0].clientX;},{passive:true});
+document.getElementById('detailScreen').addEventListener('touchend',function(e){
+  var dx=e.changedTouches[0].clientX-tsX;
+  if(Math.abs(dx)>60) detNav(dx<0?1:-1);
+},{passive:true});
+
+// ── 불능 처리 ────────────────────────────────────
+function openFailPop(){
+  document.querySelectorAll('#reasonChips .chip').forEach(function(c){c.classList.remove('sel');});
+  document.getElementById('failCustom').value='';
+  document.getElementById('failCustom').style.display='none';
+  selReason='';
+  document.getElementById('failPop').classList.add('on');
+}
+function selChip(el,r){
+  document.querySelectorAll('#reasonChips .chip').forEach(function(c){c.classList.remove('sel');});
+  el.classList.add('sel'); selReason=r;
+  document.getElementById('failCustom').style.display=r==='기타'?'block':'none';
+  if(r!=='기타') document.getElementById('failCustom').value='';
+}
+function confirmFail(){
+  if(!selReason){showToast('❗ 사유를 선택하세요');return;}
+  var 사유=selReason==='기타'?document.getElementById('failCustom').value.trim():selReason;
+  if(!사유){showToast('❗ 사유를 입력하세요');return;}
+  var c=filtered[bcIdx]; if(!c)return;
+  c.교환여부='불능'; c.불능처리일=new Date().toISOString().slice(0,10); c.확인=사유;
+  closePop('failPop'); showToast('❌ 처리 중...');
+  renderDetail(); renderList();
+  apiGet({action:'fail',sheet:SHEET,rowIndex:c.rowIndex,사유:사유})
+    .then(function(){showToast('❌ 불능 처리 완료');})
+    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+}
+
+// ── 교환 완료 (즉시 처리) ────────────────────────
+function doExchangeNow(){
+  var c=filtered[bcIdx]; if(!c||statusOf(c)!=='pending')return;
+  c.교환여부='교환'; c.교환일=new Date().toISOString().slice(0,10);
+  showToast('✅ 처리 중...'); renderList();
+  var next=-1;
+  for(var i=bcIdx+1;i<filtered.length;i++){
+    if(statusOf(filtered[i])==='pending'){next=i;break;}
+  }
+  bcIdx=next!==-1?next:Math.min(bcIdx,filtered.length-1);
+  if(filtered.length>0) setTimeout(renderDetail,200); else goBack();
+  apiGet({action:'exchange',sheet:SHEET,rowIndex:c.rowIndex,교환처:'',송금액:0,확인:''})
+    .then(function(){showToast('✅ 교환 완료!');})
+    .catch(function(){showToast('⚠️ 시트 저장 실패');});
+}
+
+function closePop(id){document.getElementById(id).classList.remove('on');}
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2500);
+}
+
+// 초기 로드
+loadData();
+</script>
+</body>
+</html>

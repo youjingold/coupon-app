@@ -1,0 +1,24 @@
+{
+  "name": "신세계쿠폰 교환",
+  "short_name": "쿠폰교환",
+  "description": "신세계 쿠폰 교환 관리 시스템",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "background_color": "#2e7d9a",
+  "theme_color": "#2e7d9a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
